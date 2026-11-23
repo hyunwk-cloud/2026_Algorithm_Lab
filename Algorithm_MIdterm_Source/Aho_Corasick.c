@@ -1,19 +1,19 @@
 /*
  * aho_corasick.c
- * Aho-Corasick ¾Ë°í¸®Áò ±¸ÇöºÎ
+ * Aho-Corasick ì•Œê³ ë¦¬ì¦˜ êµ¬í˜„ë¶€
  *
- * ±¸Ãà ´Ü°è¿¡¼­ "goto ÇÔ¼ö"±îÁö ¿ÏÀüÈ÷ Ã¤¿öµÎ´Â ¹æ½Ä(¸ğµç ³ëµåÀÇ
- * children[]ÀÌ -1·Î ³²Áö ¾Ê°í ½ÇÆĞ ¸µÅ©¸¦ µû¶ó°£ °á°ú·Î Ã¤¿öÁü)À» »ç¿ëÇÑ´Ù.
- * ÀÌ·¸°Ô ÇÏ¸é Å½»ö ´Ü°è¿¡¼­´Â ½ÇÆĞ ¸µÅ©¸¦ µû¶ó µÇµ¹¾Æ°¡´Â ¹İº¹¹® ¾øÀÌ
- * ¸Å ¹®ÀÚ¸¶´Ù ¹è¿­ Á¶È¸ 1¹ø(cur = node[cur].children[c])À¸·Î ³¡³ª¼­,
- * Å½»öÀÌ ¼ø¼ö O(n)ÀÌ µÈ´Ù.
+ * êµ¬ì¶• ë‹¨ê³„ì—ì„œ "goto í•¨ìˆ˜"ê¹Œì§€ ì™„ì „íˆ ì±„ì›Œë‘ëŠ” ë°©ì‹(ëª¨ë“  ë…¸ë“œì˜
+ * children[]ì´ -1ë¡œ ë‚¨ì§€ ì•Šê³  ì‹¤íŒ¨ ë§í¬ë¥¼ ë”°ë¼ê°„ ê²°ê³¼ë¡œ ì±„ì›Œì§)ì„ ì‚¬ìš©í•œë‹¤.
+ * ì´ë ‡ê²Œ í•˜ë©´ íƒìƒ‰ ë‹¨ê³„ì—ì„œëŠ” ì‹¤íŒ¨ ë§í¬ë¥¼ ë”°ë¼ ë˜ëŒì•„ê°€ëŠ” ë°˜ë³µë¬¸ ì—†ì´
+ * ë§¤ ë¬¸ìë§ˆë‹¤ ë°°ì—´ ì¡°íšŒ 1ë²ˆ(cur = node[cur].children[c])ìœ¼ë¡œ ëë‚˜ì„œ,
+ * íƒìƒ‰ì´ ìˆœìˆ˜ O(n)ì´ ëœë‹¤.
  */
 
 #include "aho_corasick.h"
 #include <stdlib.h>
 #include <time.h>
 
- /* »õ ³ëµå ÇÏ³ª¸¦ ÃÊ±âÈ­ (children ÀüºÎ -1, fail=0, output ¾øÀ½) */
+ /* ìƒˆ ë…¸ë“œ í•˜ë‚˜ë¥¼ ì´ˆê¸°í™” (children ì „ë¶€ -1, fail=0, output ì—†ìŒ) */
 static void ac_init_node(ACNode* node)
 {
     for (int c = 0; c < AC_ALPHABET_SIZE; c++) {
@@ -23,7 +23,7 @@ static void ac_init_node(ACNode* node)
     node->output_count = 0;
 }
 
-/* nodeÀÇ output ¸ñ·Ï¿¡ pattern_index¸¦ Ãß°¡ (¿ë·® ÃÊ°ú ½Ã ¹«½Ã) */
+/* nodeì˜ output ëª©ë¡ì— pattern_indexë¥¼ ì¶”ê°€ (ìš©ëŸ‰ ì´ˆê³¼ ì‹œ ë¬´ì‹œ) */
 static void ac_add_output(ACNode* node, int pattern_index)
 {
     if (node->output_count < AC_MAX_OUTPUTS_PER_NODE) {
@@ -33,7 +33,7 @@ static void ac_add_output(ACNode* node, int pattern_index)
 
 int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths, int pattern_count)
 {
-    /* ¿ë·® = ¸ğµç ÆĞÅÏ ±æÀÌÀÇ ÇÕ + 1(·çÆ®) */
+    /* ìš©ëŸ‰ = ëª¨ë“  íŒ¨í„´ ê¸¸ì´ì˜ í•© + 1(ë£¨íŠ¸) */
     int capacity = 1;
     for (int i = 0; i < pattern_count; i++) {
         capacity += pattern_lengths[i];
@@ -44,10 +44,10 @@ int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths,
 
     ac->capacity = capacity;
     ac->pattern_count = pattern_count;
-    ac->node_count = 1;  /* 0¹ø ³ëµå = ·çÆ® */
+    ac->node_count = 1;  /* 0ë²ˆ ë…¸ë“œ = ë£¨íŠ¸ */
     ac_init_node(&ac->nodes[0]);
 
-    /* 1´Ü°è: ¸ğµç ÆĞÅÏÀ» Trie¿¡ »ğÀÔ */
+    /* 1ë‹¨ê³„: ëª¨ë“  íŒ¨í„´ì„ íŠ¸ë¦¬ì— ì‚½ì… */
     for (int p = 0; p < pattern_count; p++) {
         int cur = 0;
         for (int i = 0; i < pattern_lengths[p]; i++) {
@@ -62,7 +62,7 @@ int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths,
         ac_add_output(&ac->nodes[cur], p);
     }
 
-    /* 2´Ü°è: BFS·Î ½ÇÆĞ ¸µÅ© + goto ÇÔ¼ö ¿Ï¼º */
+    /* 2ë‹¨ê³„: BFSë¡œ ì‹¤íŒ¨ ë§í¬ + goto í•¨ìˆ˜ ì™„ì„± */
     int* queue = (int*)malloc(sizeof(int) * ac->node_count);
     if (!queue) {
         free(ac->nodes);
@@ -70,11 +70,11 @@ int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths,
     }
     int qhead = 0, qtail = 0;
 
-    /* ·çÆ®ÀÇ Á÷°è ÀÚ½Äµé: ½ÇÆĞ ¸µÅ©´Â ÀüºÎ ·çÆ®, ¾ø´Â ¹®ÀÚ´Â ·çÆ®¸¦ °¡¸®Å°°Ô ÇÔ */
+    /* ë£¨íŠ¸ì˜ ì§ê³„ ìì‹ë“¤: ì‹¤íŒ¨ ë§í¬ëŠ” ì „ë¶€ ë£¨íŠ¸, ì—†ëŠ” ë¬¸ìëŠ” ë£¨íŠ¸ë¥¼ ê°€ë¦¬í‚¤ê²Œ í•¨ */
     for (int c = 0; c < AC_ALPHABET_SIZE; c++) {
         int child = ac->nodes[0].children[c];
         if (child == -1) {
-            ac->nodes[0].children[c] = 0;  /* ·çÆ®¿¡¼­ ¸ø °¡¸é ±×³É ·çÆ®¿¡ ¸Ó¹®´Ù */
+            ac->nodes[0].children[c] = 0;  /* ë£¨íŠ¸ì—ì„œ ëª» ê°€ë©´ ê·¸ëƒ¥ ë£¨íŠ¸ì— ë¨¸ë¬¸ë‹¤ */
         }
         else {
             ac->nodes[child].fail = 0;
@@ -87,12 +87,12 @@ int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths,
         for (int c = 0; c < AC_ALPHABET_SIZE; c++) {
             int v = ac->nodes[u].children[c];
             if (v != -1) {
-                /* ½ÇÆĞ ¸µÅ© = "ºÎ¸ğÀÇ ½ÇÆĞ ¸µÅ©°¡ °¡¸®Å°´Â ³ëµå"¿¡¼­ °°Àº ¹®ÀÚ·Î °£ °÷ */
+                /* ì‹¤íŒ¨ ë§í¬ = "ë¶€ëª¨ì˜ ì‹¤íŒ¨ ë§í¬ê°€ ê°€ë¦¬í‚¤ëŠ” ë…¸ë“œ"ì—ì„œ ê°™ì€ ë¬¸ìë¡œ ê°„ ê³³ */
                 int f = ac->nodes[u].fail;
                 ac->nodes[v].fail = ac->nodes[f].children[c];
 
-                /* ½ÇÆĞ ¸µÅ©°¡ °¡¸®Å°´Â ³ëµåÀÇ outputÀ» ±×´ë·Î »ó¼Ó
-                   (´õ ÂªÀº ÆĞÅÏÀÌ ÇöÀç ÆĞÅÏÀÇ Á¢¹Ì»ç·Î ¼û¾îÀÖ´Â °æ¿ì¸¦ ³õÄ¡Áö ¾Ê±â À§ÇÔ) */
+                /* ì‹¤íŒ¨ ë§í¬ê°€ ê°€ë¦¬í‚¤ëŠ” ë…¸ë“œì˜ outputì„ ê·¸ëŒ€ë¡œ ìƒì†
+                   (ë” ì§§ì€ íŒ¨í„´ì´ í˜„ì¬ íŒ¨í„´ì˜ ì ‘ë¯¸ì‚¬ë¡œ ìˆ¨ì–´ìˆëŠ” ê²½ìš°ë¥¼ ë†“ì¹˜ì§€ ì•Šê¸° ìœ„í•¨) */
                 ACNode* fail_node = &ac->nodes[ac->nodes[v].fail];
                 for (int k = 0; k < fail_node->output_count; k++) {
                     ac_add_output(&ac->nodes[v], fail_node->outputs[k]);
@@ -101,9 +101,9 @@ int ac_build(ACAutomaton* ac, const char** patterns, const int* pattern_lengths,
                 queue[qtail++] = v;
             }
             else {
-                /* goto ÇÔ¼ö ¿Ï¼º: ÀÌ ³ëµå¿¡ ÇØ´ç ¹®ÀÚ·Î °¡´Â ±æÀÌ ¾øÀ¸¸é
-                   ½ÇÆĞ ¸µÅ©¸¦ µû¶ó°¬À» ¶§ÀÇ ÀüÀÌ¸¦ ±×´ë·Î º¹»çÇØµĞ´Ù.
-                   Å½»ö ´Ü°è¿¡¼­ ¹İº¹ ¾øÀÌ 1¹øÀÇ ¹è¿­ Á¶È¸·Î ³¡³ª°Ô ÇÏ´Â ÇÙ½É. */
+                /* goto í•¨ìˆ˜ ì™„ì„±: ì´ ë…¸ë“œì— í•´ë‹¹ ë¬¸ìë¡œ ê°€ëŠ” ê¸¸ì´ ì—†ìœ¼ë©´
+                   ì‹¤íŒ¨ ë§í¬ë¥¼ ë”°ë¼ê°”ì„ ë•Œì˜ ì „ì´ë¥¼ ê·¸ëŒ€ë¡œ ë³µì‚¬í•´ë‘”ë‹¤.
+                   íƒìƒ‰ ë‹¨ê³„ì—ì„œ ë°˜ë³µ ì—†ì´ 1ë²ˆì˜ ë°°ì—´ ì¡°íšŒë¡œ ëë‚˜ê²Œ í•˜ëŠ” í•µì‹¬. */
                 ac->nodes[u].children[c] = ac->nodes[ac->nodes[u].fail].children[c];
             }
         }
@@ -123,13 +123,13 @@ int ac_search(ACAutomaton* ac, const char* text, int text_len,
     int cur = 0;
     for (int i = 0; i < text_len; i++) {
         unsigned char c = (unsigned char)text[i];
-        cur = ac->nodes[cur].children[c];  /* goto ÇÔ¼ö 1È¸ Á¶È¸ = »óÅÂÀüÀÌ 1È¸ */
+        cur = ac->nodes[cur].children[c];  /* goto í•¨ìˆ˜ 1íšŒ ì¡°íšŒ = ìƒíƒœì „ì´ 1íšŒ */
         comparisons++;
 
         if (ac->nodes[cur].output_count > 0) {
             for (int k = 0; k < ac->nodes[cur].output_count; k++) {
                 if (match_count < max_results) {
-                    results[match_count].position = i + 1; /* ¸ÅÄªÀÌ ³¡³­ ÁöÁ¡(+1) */
+                    results[match_count].position = i + 1; /* ë§¤ì¹­ì´ ëë‚œ ì§€ì (+1) */
                     results[match_count].pattern_index = ac->nodes[cur].outputs[k];
                 }
                 match_count++;
@@ -141,8 +141,8 @@ int ac_search(ACAutomaton* ac, const char* text, int text_len,
 
     if (stats) {
         int total_pattern_len = 0;
-        /* total_pattern_length´Â ac_build ¶§ ¾Ë ¼ö ÀÖÁö¸¸ ¿©±â¼± È£ÃâÀÚ°¡
-           ÇÊ¿ä½Ã º°µµ·Î Ã¤¿ìµµ·Ï 0À¸·Î µÒ (main¿¡¼­ Á÷Á¢ ¼¼ÆÃ) */
+        /* total_pattern_lengthëŠ” ac_build ë•Œ ì•Œ ìˆ˜ ìˆì§€ë§Œ ì—¬ê¸°ì„  í˜¸ì¶œìê°€
+           í•„ìš”ì‹œ ë³„ë„ë¡œ ì±„ìš°ë„ë¡ 0ìœ¼ë¡œ ë‘  (mainì—ì„œ ì§ì ‘ ì„¸íŒ…) */
         stats->text_length = text_len;
         stats->total_pattern_length = total_pattern_len;
         stats->pattern_count = ac->pattern_count;
